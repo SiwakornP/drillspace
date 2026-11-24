@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: drillspace-pilot
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python start.py
+    healthCheckPath: /healthz
+    autoDeploy: false
+    disk:
+      name: drillspace-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: PUBLIC_ORIGIN
+        sync: false
+      - key: DATA_DIR
+        value: /var/data
