@@ -1,0 +1,8 @@
+(()=>{
+const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Only emit these fixed formatting tags; entered HTML is always escaped.
+function inline(s){return escape(s).replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g,'$1<em>$2</em>');}
+function render(s){let out='',list='';for(const line of String(s??'').replace(/\r\n?/g,'\n').split('\n')){const m=line.match(/^\s*(?:([-•])|\d+\.)\s+(.+)$/);const type=m?(m[1]?'ul':'ol'):'';if(list!==type){if(list)out+='</'+list+'>';if(type)out+='<'+type+'>';list=type;}const heading=line.match(/^(History|Physical examination(?: reveals)?|Laboratory findings|Radiograph findings|Imaging findings|Investigations):?$/i);out+=m?'<li>'+inline(m[2])+'</li>':heading?'<h3>'+inline(heading[1])+'</h3>':inline(line)+'<br>'; }if(list)out+='</'+list+'>';return out.replace(/<br>$/,'');}
+function explanationImage(q){const path=q.explanation_image;if(!path||!/^question_image\/[A-Za-z0-9_.-]+\.(png|jpg|jpeg)$/i.test(path))return '';return '<figure><a href="/'+escape(path)+'" target="_blank" rel="noopener" aria-label="Enlarge explanation image"><img src="/'+escape(path)+'" alt="'+escape(q.explanation_caption||'Explanation image')+'" style="display:block;max-width:100%;max-height:400px;object-fit:contain"></a>'+(q.explanation_caption?'<figcaption>'+escape(q.explanation_caption)+'</figcaption>':'')+'<small>Click image to enlarge</small></figure>';}
+window.RichText={inline,render,explanationImage};
+})();

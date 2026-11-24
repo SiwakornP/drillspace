@@ -1,0 +1,5 @@
+/* Shared DrillSpace identity, including the signed-out pages. */
+.brand .mark{display:inline-block!important;width:38px!important;height:38px!important;flex:0 0 38px;padding:0!important;border-radius:9px;background:transparent url('/drillspace-logo.svg?v=2') center/contain no-repeat!important;font-size:0!important;line-height:0!important;color:transparent!important}
+.brand>strong,.brand.home-brand>strong{font-size:21px;font-weight:700;letter-spacing:-.55px;color:#111d3c;line-height:1.2}
+.brand.home-brand{gap:10px!important}.brand.home-brand:hover>strong{color:#2454d6}
+@media(max-width:600px){.brand .mark{width:34px!important;height:34px!important;flex-basis:34px}.brand>strong,.brand.home-brand>strong{font-size:19px}}
