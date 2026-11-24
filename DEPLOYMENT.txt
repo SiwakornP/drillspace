@@ -10,15 +10,15 @@ question images, passwords, learner records, or backup archives. Keep the reposi
    Start: python start.py
    Health check: /healthz
    Persistent disk: /var/data, initially 1 GB. Monitor growth: backups are not pruned.
-   PUBLIC_ORIGIN: exact HTTPS service URL, without trailing slash.
+   PUBLIC_ORIGIN: optional override; defaults to Render’s assigned HTTPS URL.
    DATA_DIR: /var/data
    Auto-deploy: off. One worker; do not add replicas with the current SQLite database.
-3. The first start deliberately refuses to run without an existing database and admin.
+3. The first start serves only a maintenance page until the database is imported; no accounts or uploads are exposed.
    Transfer a verified backup securely to Render's private service shell/storage. Do not
    commit it to GitHub or expose it through the public website.
    Run: python restore_seed.py /private/path/to/backup.zip
    It verifies manifest checksums, imports only database and question images, clears
-   sessions, and refuses to overwrite an existing database. Restart the service afterward.
+   sessions, and refuses to overwrite an existing database. Restart the service afterward. Startup verifies database integrity and an active admin before serving the application.
 4. Sign in with an existing administrator account. Verify question counts and images.
    Local and cloud data are separate from this point. Decide a final cutover time before
    accepting live use; never replace the cloud DB with a stale local copy.

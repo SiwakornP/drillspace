@@ -5,7 +5,7 @@ from http import HTTPStatus
 from urllib.parse import unquote,urlsplit
 from pathlib import Path
 import server
-ORIGIN=os.environ.get('PUBLIC_ORIGIN','').rstrip('/')
+ORIGIN=(os.environ.get('PUBLIC_ORIGIN') or os.environ.get('RENDER_EXTERNAL_URL','')).rstrip('/')
 if not ORIGIN.startswith('https://') or urlsplit(ORIGIN).path:raise RuntimeError('Set PUBLIC_ORIGIN to the exact HTTPS site origin')
 SECRET_KEYS={'accepted','choice_scores','lower','upper','explanation','explanation_image','explanation_caption','notes'}
 def clean(q):
