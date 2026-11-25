@@ -12,10 +12,10 @@ window.presentQuestion=text=>{
 
  const lines=String(text).split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
  const marker=/^(History|Physical examination(?: reveals)?|Laboratory findings|Radiograph findings|Imaging findings|Investigations):?$/i;
- if(!lines.some(x=>marker.test(x)))return `<h2 class="question-prompt">${esc(text).replace(/\n/g,'<br>')}</h2>`;
+ if(!lines.some(x=>marker.test(x)))return `<h2 class="question-prompt">${RichText.render(text)}</h2>`;
  const groups=[];let group={title:'History',lines:[]};let prompt='';
  lines.forEach((line,i)=>{const match=line.match(marker);if(match){if(group.lines.length)groups.push(group);group={title:match[1].replace(/ reveals$/i,''),lines:[]}}else if(i===lines.length-1&&line.endsWith('?')){prompt=line}else group.lines.push(line)});
  if(group.lines.length)groups.push(group);
- return `<div class="clinical-case">${groups.map(g=>`<section class="case-section"><h3>${esc(g.title)}</h3>${g.title.toLowerCase()==='history'?g.lines.map(x=>`<p>${esc(x)}</p>`).join(''):`<ul>${g.lines.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`}</section>`).join('')}</div>${prompt?`<h2 class="question-prompt">${esc(prompt)}</h2>`:''}`;
+ return `<div class="clinical-case">${groups.map(g=>`<section class="case-section"><h3>${esc(g.title)}</h3>${g.title.toLowerCase()==='history'?g.lines.map(x=>`<p>${RichText.inline(x)}</p>`).join(''):`<ul>${g.lines.map(x=>`<li>${RichText.inline(x)}</li>`).join('')}</ul>`}</section>`).join('')}</div>${prompt?`<h2 class="question-prompt">${RichText.inline(prompt)}</h2>`:''}`;
 };
 })();
