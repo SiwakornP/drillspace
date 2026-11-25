@@ -54,7 +54,6 @@ def application(environ,start_response):
   try:length=int(environ.get('CONTENT_LENGTH','0'))
   except ValueError:return reject(400,'Invalid length')
   if not 0<length<=12000000:return reject(413,'Request too large or empty')
- if path=='/api/register':return reject(403,'Public registration is disabled during deployment testing.')
  h=Request(environ)
  try:getattr(h,'do_'+method)()
  except Exception:

@@ -1,6 +1,6 @@
 import profiles
 """Local account/session and per-user study-data endpoints."""
-import hashlib,hmac,json,re,secrets,time,sqlite3
+import hashlib,hmac,json,re,secrets,time,sqlite3,os
 from http.cookies import SimpleCookie
 from urllib.parse import urlsplit
 
@@ -9,6 +9,7 @@ def initialize(db):
         c.executescript('''
         CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,username TEXT UNIQUE COLLATE NOCASE NOT NULL,name TEXT NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL,created TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,user_id INTEGER NOT NULL,expires REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS password_resets(token TEXT PRIMARY KEY,user_id INTEGER NOT NULL,expires REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS login_attempts(bucket TEXT,created REAL);
         CREATE TABLE IF NOT EXISTS study_data(user_id INTEGER NOT NULL,key TEXT NOT NULL,value TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(user_id,key));
         ''')
@@ -75,7 +76,7 @@ class AccountMixin:
         if not self.allowed() or self.headers.get('Content-Type')!='application/json' or self.headers.get('X-Quiz-Admin')!='1' or self.headers.get('Origin','') not in ['',f'http://127.0.0.1:{self.account_port}',f'http://localhost:{self.account_port}']:
             self.reply_account(403,{'error':'Request not allowed.'});return True
         user=self.current_user()
-        if path not in ['/api/profile','/api/login','/api/register','/api/logout','/api/study','/api/import-browser','/api/password','/api/admin/user-status']:
+        if path not in ['/api/profile','/api/login','/api/register','/api/logout','/api/study','/api/import-browser','/api/password','/api/admin/user-status','/api/admin/password-reset','/api/password-reset']:
             if not user:self.reply_account(401,{'error':'Please sign in.'});return True
             if path=='/api/editor/propose' and user['role'] in ['editor','admin']:return False
             if path not in ['/api/feedback','/api/attempts/start','/api/attempts/submit','/api/attempts/progress','/api/attempts/discard','/api/ranked-exams/start'] and user['role']!='admin':self.reply_account(403,{'error':'Administrator access required.'});return True
@@ -102,7 +103,7 @@ class AccountMixin:
                     hashed=password_hash(password)
                     with self.account_db() as c:
                         c.execute('BEGIN IMMEDIATE')
-                        role='admin' if c.execute('SELECT count(*) FROM users').fetchone()[0]==0 else 'learner'
+                        role='learner' if os.environ.get('RENDER')=='true' else ('admin' if c.execute('SELECT count(*) FROM users').fetchone()[0]==0 else 'learner')
                         try:uid=c.execute('INSERT INTO users(username,name,password,role) VALUES (?,?,?,?)',(username,name.strip(),hashed,role)).lastrowid
                         except sqlite3.IntegrityError:raise ValueError('This username is unavailable.')
                 else:
@@ -114,6 +115,30 @@ class AccountMixin:
                     uid=row[0]
                 with self.account_db() as c:c.execute('DELETE FROM login_attempts WHERE bucket=?',(bucket,))
                 self.reply_account(200,{'ok':True},self.session_cookie(uid));return True
+            if path=='/api/password-reset':
+                token=data.get('token','');new=data.get('password','');valid_password(new)
+                if not isinstance(token,str) or not re.fullmatch(r'[A-Za-z0-9_-]{43}',token):raise ValueError('Reset link is invalid or expired.')
+                digest=hashlib.sha256(token.encode()).hexdigest()
+                with self.account_db() as c:
+                    c.execute('BEGIN IMMEDIATE')
+                    row=c.execute('SELECT r.user_id FROM password_resets r JOIN users u ON u.id=r.user_id WHERE r.token=? AND r.expires>? AND u.disabled=0',(digest,time.time())).fetchone()
+                    if not row:raise ValueError('Reset link is invalid or expired.')
+                    c.execute('UPDATE users SET password=? WHERE id=?',(password_hash(new),row[0]))
+                    c.execute('DELETE FROM password_resets WHERE user_id=?',(row[0],))
+                    c.execute('DELETE FROM sessions WHERE user_id=?',(row[0],))
+                self.reply_account(200,{'ok':True});return True
+            if path=='/api/admin/password-reset':
+                if not user or user['role']!='admin':self.reply_account(403,{'error':'Administrator access required.'});return True
+                ident=data.get('id')
+                if type(ident) is not int:raise ValueError('Choose an account.')
+                token=secrets.token_urlsafe(32)
+                with self.account_db() as c:
+                    c.execute('BEGIN IMMEDIATE')
+                    target=c.execute('SELECT role,disabled FROM users WHERE id=?',(ident,)).fetchone()
+                    if not target or target[1] or target[0]=='admin':raise ValueError('Choose an active learner or editor account. Admin recovery requires server-owner assistance.')
+                    c.execute('DELETE FROM password_resets WHERE user_id=? OR expires<=?',(ident,time.time()))
+                    c.execute('INSERT INTO password_resets VALUES (?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),ident,time.time()+1800))
+                self.reply_account(200,{'token':token,'expires_minutes':30});return True
             if not user:self.reply_account(401,{'error':'Please sign in.'});return True
             if path in ['/api/profile','/api/study','/api/import-browser','/api/password'] and data.get('account_id')!=user['id']:
                 self.reply_account(409,{'error':'The signed-in account changed. Reload this page before continuing.'});return True
