@@ -11,7 +11,8 @@ def update(path,data,validate,backup,actor):
         result=[]
         for c in changes:
             fields=c.get('fields')
-            if not isinstance(fields,dict) or not fields or set(fields)-{'subject','topic','status','case_order'}:raise ValueError('Edits support subject, topic, status and order within case only.')
+            if not isinstance(fields,dict) or not fields or set(fields)-{'subject','topic','status','case_order','discussion_enabled'}:raise ValueError('Edits support subject, topic, status, public discussion and order within case only.')
+            if 'discussion_enabled' in fields and type(fields['discussion_enabled']) is not bool:raise ValueError('Discussion setting must be true or false.')
             row=db.execute('SELECT body,revision FROM questions WHERE id=?',(c['id'],)).fetchone()
             if not row or row[1]!=c.get('revision'):raise ValueError('A selected question changed. Refresh the table and review your changes again. Nothing was saved.')
             old=json.loads(row[0])
